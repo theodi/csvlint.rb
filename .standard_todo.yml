@@ -13,4 +13,3 @@ ignore:
 - lib/csvlint/field.rb
 - lib/csvlint/schema.rb
 - lib/csvlint/validate.rb
-- spec/validator_spec.rb

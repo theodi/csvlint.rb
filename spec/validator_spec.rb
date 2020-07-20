@@ -586,14 +586,14 @@ describe Csvlint::Validator do
     it "should call a lambda for each line" do
       @count = 0
       mylambda = lambda { |row| @count += 1 }
-      validator = Csvlint::Validator.new(File.new(File.join(File.dirname(__FILE__), "..", "features", "fixtures", "valid.csv")), {}, nil, {lambda: mylambda})
+      Csvlint::Validator.new(File.new(File.join(File.dirname(__FILE__), "..", "features", "fixtures", "valid.csv")), {}, nil, {lambda: mylambda})
       expect(@count).to eq(3)
     end
 
     it "reports back the status of each line" do
       @results = []
       mylambda = lambda { |row| @results << row.current_line }
-      validator = Csvlint::Validator.new(File.new(File.join(File.dirname(__FILE__), "..", "features", "fixtures", "valid.csv")), {}, nil, {lambda: mylambda})
+      Csvlint::Validator.new(File.new(File.join(File.dirname(__FILE__), "..", "features", "fixtures", "valid.csv")), {}, nil, {lambda: mylambda})
       expect(@results.count).to eq(3)
       expect(@results[0]).to eq(1)
       expect(@results[1]).to eq(2)
