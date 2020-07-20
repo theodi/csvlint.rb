@@ -2,7 +2,6 @@
 # Remove from this list as you refactor files.
 ---
 ignore:
-- features/step_definitions/validation_errors_steps.rb
 - features/support/load_tests.rb
 - lib/csvlint/cli.rb
 - lib/csvlint/csvw/column.rb
