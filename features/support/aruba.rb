@@ -1,8 +1,8 @@
-require 'aruba'
-require 'aruba/in_process'
-require 'aruba/cucumber'
+require "aruba"
+require "aruba/in_process"
+require "aruba/cucumber"
 
-require 'csvlint/cli'
+require "csvlint/cli"
 
 module Csvlint
   class CliRunner
@@ -23,27 +23,27 @@ module Csvlint
 
         # Thor::Base#start does not have a return value, assume success if no exception is raised.
         0
-      rescue StandardError => e
-        # The ruby interpreter would pipe this to STDERR and exit 1 in the case of an unhandled exception
-        b = e.backtrace
-        @stderr.puts("#{b.shift}: #{e.message} (#{e.class})")
-        @stderr.puts(b.map{|s| "\tfrom #{s}"}.join("\n"))
-        1
-      rescue SystemExit => e
-        e.status
-      ensure
-        # TODO: reset your app here, free up resources, etc.
-        # Examples:
-        # MyApp.logger.flush
-        # MyApp.logger.close
-        # MyApp.logger = nil
-        #
-        # MyApp.reset_singleton_instance_variables
+                  rescue => e
+                    # The ruby interpreter would pipe this to STDERR and exit 1 in the case of an unhandled exception
+                    b = e.backtrace
+                    @stderr.puts("#{b.shift}: #{e.message} (#{e.class})")
+                    @stderr.puts(b.map { |s| "\tfrom #{s}" }.join("\n"))
+                    1
+                  rescue SystemExit => e
+                    e.status
+                  ensure
+                    # TODO: reset your app here, free up resources, etc.
+                    # Examples:
+                    # MyApp.logger.flush
+                    # MyApp.logger.close
+                    # MyApp.logger = nil
+                    #
+                    # MyApp.reset_singleton_instance_variables
 
-        # ...then we put the streams back.
-        $stderr = STDERR
-        $stdin = STDIN
-        $stdout = STDOUT
+                    # ...then we put the streams back.
+                    $stderr = STDERR
+                    $stdin = STDIN
+                    $stdout = STDOUT
       end
 
       # Proxy our exit code back to the injected kernel.

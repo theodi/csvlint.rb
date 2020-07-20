@@ -1,7 +1,6 @@
-require 'spec_helper'
+require "spec_helper"
 
 describe Csvlint::Csvw::NumberFormat do
-
   it "should correctly parse #,##0.##" do
     format = Csvlint::Csvw::NumberFormat.new("#,##0.##")
     expect(format.pattern).to eq("#,##0.##")
@@ -397,7 +396,7 @@ describe Csvlint::Csvw::NumberFormat do
   end
 
   it "should parse numbers normally when there is no pattern" do
-    format = Csvlint::Csvw::NumberFormat.new()
+    format = Csvlint::Csvw::NumberFormat.new
     expect(format.parse("1")).to eql(1)
     expect(format.parse("-1")).to eql(-1)
     expect(format.parse("12.3")).to eql(12.3)
@@ -442,5 +441,4 @@ describe Csvlint::Csvw::NumberFormat do
     expect(format.parse("1 234 567")).to eql(1234567)
     expect(format.parse("1  234")).to eq(nil)
   end
-
 end

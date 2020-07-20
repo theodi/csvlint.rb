@@ -1,26 +1,25 @@
 module Csvlint
   module Csvw
     class NumberFormat
-
       attr_reader :integer, :pattern, :prefix, :numeric_part, :suffix, :grouping_separator, :decimal_separator, :primary_grouping_size, :secondary_grouping_size, :fractional_grouping_size
 
-      def initialize(pattern=nil, grouping_separator=nil, decimal_separator=".", integer=nil)
+      def initialize(pattern = nil, grouping_separator = nil, decimal_separator = ".", integer = nil)
         @pattern = pattern
         @integer = integer
         if @integer.nil?
-          if @pattern.nil?
-            @integer = nil
+          @integer = if @pattern.nil?
+            nil
           else
-            @integer = !@pattern.include?(decimal_separator)
+            !@pattern.include?(decimal_separator)
           end
         end
         @grouping_separator = grouping_separator || (@pattern.nil? ? nil : ",")
         @decimal_separator = decimal_separator || "."
         if pattern.nil?
-          if integer
-            @regexp = INTEGER_REGEXP
+          @regexp = if integer
+            INTEGER_REGEXP
           else
-            @regexp = Regexp.new("^(([-+]?[0-9]+(\\.[0-9]+)?([Ee][-+]?[0-9]+)?[%‰]?)|NaN|INF|-INF)$")
+            Regexp.new("^(([-+]?[0-9]+(\\.[0-9]+)?([Ee][-+]?[0-9]+)?[%‰]?)|NaN|INF|-INF)$")
           end
         else
           numeric_part_regexp = Regexp.new("(?<numeric_part>[-+]?([0#Ee]|#{Regexp.escape(@grouping_separator)}|#{Regexp.escape(@decimal_separator)})+)")
@@ -47,18 +46,30 @@ module Csvlint
             numeric_part_regexp = "[-+]?"
           end
 
-          min_integer_digits = integer_part.gsub(@grouping_separator, "").gsub("#", "").length
-          min_fraction_digits = fractional_part.gsub(@grouping_separator, "").gsub("#", "").length
+          min_integer_digits = integer_part.gsub(@grouping_separator, "").delete("#").length
+          min_fraction_digits = fractional_part.gsub(@grouping_separator, "").delete("#").length
           max_fraction_digits = fractional_part.gsub(@grouping_separator, "").length
-          min_exponent_digits = exponent_part.gsub("#", "").length
+          min_exponent_digits = exponent_part.delete("#").length
           max_exponent_digits = exponent_part.length
 
           integer_parts = integer_part.split(@grouping_separator)[1..-1]
-          @primary_grouping_size = integer_parts[-1].length rescue 0
-          @secondary_grouping_size = integer_parts[-2].length rescue @primary_grouping_size
+          @primary_grouping_size = begin
+                                     integer_parts[-1].length
+                                   rescue
+                                     0
+                                   end
+          @secondary_grouping_size = begin
+                                       integer_parts[-2].length
+                                     rescue
+                                       @primary_grouping_size
+                                     end
 
           fractional_parts = fractional_part.split(@grouping_separator)[0..-2]
-          @fractional_grouping_size = fractional_parts[0].length rescue 0
+          @fractional_grouping_size = begin
+                                        fractional_parts[0].length
+                                      rescue
+                                        0
+                                      end
 
           if @primary_grouping_size == 0
             integer_regexp = "[0-9]*[0-9]{#{min_integer_digits}}"
@@ -101,7 +112,7 @@ module Csvlint
                   fractional_regexp += "[0-9]{#{@fractional_grouping_size}}"
                   # additional groups of required digits - something like "(,[0-9]{3}){1}"
                   fractional_regexp += "(#{Regexp.escape(@grouping_separator)}[0-9]{#{@fractional_grouping_size}}){#{min_fraction_digits / @fractional_grouping_size - 1}}" if min_fraction_digits / @fractional_grouping_size > 1
-                  fractional_regexp += "#{Regexp.escape(@grouping_separator)}" if min_fraction_digits % @fractional_grouping_size > 0
+                  fractional_regexp += Regexp.escape(@grouping_separator).to_s if min_fraction_digits % @fractional_grouping_size > 0
                 end
                 # additional required digits - something like ",[0-9]{1}"
                 fractional_regexp += "[0-9]{#{min_fraction_digits % @fractional_grouping_size}}" if min_fraction_digits % @fractional_grouping_size > 0
@@ -168,7 +179,7 @@ module Csvlint
       end
 
       def match(value)
-        value =~ @regexp ? true : false
+        value&.match?(@regexp) ? true : false
       end
 
       def parse(value)
@@ -176,30 +187,28 @@ module Csvlint
           return nil if !@grouping_separator.nil? && value =~ Regexp.new("((^#{Regexp.escape(@grouping_separator)})|#{Regexp.escape(@grouping_separator)}{2})")
           value.gsub!(@grouping_separator, "") unless @grouping_separator.nil?
           value.gsub!(@decimal_separator, ".") unless @decimal_separator.nil?
-          if value =~ @regexp
+          if value&.match?(@regexp)
             case value
             when "NaN"
-              return Float::NAN
+              Float::NAN
             when "INF"
-              return Float::INFINITY
+              Float::INFINITY
             when "-INF"
-              return -Float::INFINITY
+              -Float::INFINITY
             else
               case value[-1]
               when "%"
-                return value.to_f / 100
+                value.to_f / 100
               when "‰"
-                return value.to_f / 1000
+                value.to_f / 1000
               else
                 if @integer.nil?
-                  return value.include?(".") ? value.to_f : value.to_i
+                  value.include?(".") ? value.to_f : value.to_i
                 else
-                  return @integer ? value.to_i : value.to_f
+                  @integer ? value.to_i : value.to_f
                 end
               end
             end
-          else
-            return nil
           end
         else
           match = @regexp.match(value)
@@ -210,17 +219,16 @@ module Csvlint
           number = @integer ? number.to_i : number.to_f
           number = number.to_f / 100 if match["prefix"].include?("%") || match["suffix"].include?("%")
           number = number.to_f / 1000 if match["prefix"].include?("‰") || match["suffix"].include?("‰")
-          return number
+          number
         end
       end
 
       private
-        INTEGER_REGEXP = /^[-+]?[0-9]+[%‰]?$/
 
+      INTEGER_REGEXP = /^[-+]?[0-9]+[%‰]?$/
     end
 
     class NumberFormatError < StandardError
-
     end
   end
 end
