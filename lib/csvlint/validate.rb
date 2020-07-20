@@ -479,24 +479,26 @@ module Csvlint
       end
       paths = ["{+url}-metadata.json", "csv-metadata.json"] if paths.empty?
       paths.each do |template|
-        template = URITemplate.new(template)
-        path = template.expand("url" => @source_url)
-        url = URI.join(@source_url, path)
-        url = File.new(url.to_s.sub(/^file:/, "")) if /^file:/.match?(url.to_s)
-        schema = Schema.load_from_uri(url)
-        if schema.instance_of? Csvlint::Csvw::TableGroup
-          if schema.tables[@source_url]
-            @schema = schema
-            return
-          else
-            warn_if_unsuccessful = true
-            build_warnings(:schema_mismatch, :context, nil, nil, @source_url, schema)
+        begin
+          template = URITemplate.new(template)
+          path = template.expand("url" => @source_url)
+          url = URI.join(@source_url, path)
+          url = File.new(url.to_s.sub(/^file:/, "")) if /^file:/.match?(url.to_s)
+          schema = Schema.load_from_uri(url)
+          if schema.instance_of? Csvlint::Csvw::TableGroup
+            if schema.tables[@source_url]
+              @schema = schema
+              return
+            else
+              warn_if_unsuccessful = true
+              build_warnings(:schema_mismatch, :context, nil, nil, @source_url, schema)
+            end
           end
+        rescue Errno::ENOENT
+        rescue OpenURI::HTTPError, URI::BadURIError, ArgumentError
+        rescue => e
+          raise e
         end
-      rescue Errno::ENOENT
-      rescue OpenURI::HTTPError, URI::BadURIError, ArgumentError
-      rescue => e
-        raise e
       end
       build_warnings(:schema_mismatch, :context, nil, nil, @source_url, schema) if warn_if_unsuccessful
       @schema = nil
