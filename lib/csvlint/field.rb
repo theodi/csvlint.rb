@@ -102,18 +102,18 @@ module Csvlint
       # TODO: we're ignoring issues with converting ranges to actual types, maybe we
       # should generate a warning? The schema is invalid
       if constraints["minimum"]
-        minimumValue = convert_to_type(constraints["minimum"])
-        if minimumValue
-          unless value >= minimumValue
+        minimum_value = convert_to_type(constraints["minimum"])
+        if minimum_value
+          unless value >= minimum_value
             build_errors(:below_minimum, :schema, row, column, value,
               {"minimum" => constraints["minimum"]})
           end
         end
       end
       if constraints["maximum"]
-        maximumValue = convert_to_type(constraints["maximum"])
-        if maximumValue
-          unless value <= maximumValue
+        maximum_value = convert_to_type(constraints["maximum"])
+        if maximum_value
+          unless value <= maximum_value
             build_errors(:above_maximum, :schema, row, column, value,
               {"maximum" => constraints["maximum"]})
           end

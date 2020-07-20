@@ -10,6 +10,5 @@ ignore:
 - lib/csvlint/csvw/property_checker.rb
 - lib/csvlint/csvw/table.rb
 - lib/csvlint/csvw/table_group.rb
-- lib/csvlint/field.rb
 - lib/csvlint/schema.rb
 - lib/csvlint/validate.rb
