@@ -1,0 +1,14 @@
+# Auto generated files with errors to ignore.
+# Remove from this list as you refactor files.
+---
+ignore:
+- features/support/load_tests.rb
+- lib/csvlint/cli.rb
+- lib/csvlint/csvw/column.rb
+- lib/csvlint/csvw/date_format.rb
+- lib/csvlint/csvw/number_format.rb
+- lib/csvlint/csvw/property_checker.rb
+- lib/csvlint/csvw/table.rb
+- lib/csvlint/csvw/table_group.rb
+- lib/csvlint/schema.rb
+- lib/csvlint/validate.rb

@@ -1,24 +1,23 @@
 module Csvlint
-
   class Validator
     class LineCSV < CSV
-      ENCODE_RE = Hash.new do |h,str|
+      ENCODE_RE = Hash.new { |h, str|
         h[str] = Regexp.new(str)
-      end
+      }
 
-      ENCODE_STR = Hash.new do |h,encoding_name|
-        h[encoding_name] = Hash.new do |h,chunks|
-          h[chunks] = chunks.map { |chunk| chunk.encode(encoding_name) }.join('')
-        end
-      end
+      ENCODE_STR = Hash.new { |h, encoding_name|
+        h[encoding_name] = Hash.new { |h, chunks|
+          h[chunks] = chunks.map { |chunk| chunk.encode(encoding_name) }.join("")
+        }
+      }
 
-      ESCAPE_RE = Hash.new do |h,re_chars|
-        h[re_chars] = Hash.new do |h,re_esc|
-          h[re_esc] = Hash.new do |h,str|
-            h[str] = str.gsub(re_chars) {|c| re_esc + c}
-          end
-        end
-      end
+      ESCAPE_RE = Hash.new { |h, re_chars|
+        h[re_chars] = Hash.new { |h, re_esc|
+          h[re_esc] = Hash.new { |h, str|
+            h[str] = str.gsub(re_chars) { |c| re_esc + c }
+          }
+        }
+      }
 
       # Optimization: Memoize `encode_re`.
       # @see https://github.com/ruby/ruby/blob/v2_2_3/lib/csv.rb#L2273
@@ -38,7 +37,7 @@ module Csvlint
         ESCAPE_RE[@re_chars][@re_esc][str]
       end
 
-      if RUBY_VERSION < '2.5'
+      if RUBY_VERSION < "2.5"
         # Optimization: Disable the CSV library's converters feature.
         # @see https://github.com/ruby/ruby/blob/v2_2_3/lib/csv.rb#L2100
         def init_converters(options, field_name = :converters)
@@ -55,10 +54,10 @@ module Csvlint
     attr_reader :encoding, :content_type, :extension, :headers, :link_headers, :dialect, :csv_header, :schema, :data, :current_line
 
     ERROR_MATCHERS = {
-        "Missing or stray quote" => :stray_quote,
-        "Illegal quoting" => :whitespace,
-        "Unclosed quoted field" => :unclosed_quote,
-        "Unquoted fields do not allow \\r or \\n" => :line_breaks,
+      "Missing or stray quote" => :stray_quote,
+      "Illegal quoting" => :whitespace,
+      "Unclosed quoted field" => :unclosed_quote,
+      "Unquoted fields do not allow \\r or \\n" => :line_breaks
     }
 
     def initialize(source, dialect = {}, schema = nil, options = {})
@@ -89,7 +88,7 @@ module Csvlint
     end
 
     def validate
-      if @extension =~ /.xls(x)?/
+      if /.xls(x)?/.match?(@extension)
         build_warnings(:excel, :context)
         return
       end
@@ -119,7 +118,11 @@ module Csvlint
       request = Typhoeus::Request.new(@source, followlocation: true)
       request.on_headers do |response|
         @headers = response.headers || {}
-        @content_type = response.headers["content-type"] rescue nil
+        @content_type = begin
+                          response.headers["content-type"]
+                        rescue
+                          nil
+                        end
         @response_code = response.code
         return build_errors(:not_found) if response.code == 404
         validate_metadata
@@ -147,7 +150,7 @@ module Csvlint
         else
           validate_line(line, @current_line)
           @leading = ""
-          @current_line = @current_line+1
+          @current_line += 1
         end
       else
         # If it's not a full line, then prepare to add it to the beginning of the next chunk
@@ -155,7 +158,7 @@ module Csvlint
       end
     rescue ArgumentError => ae
       build_errors(:invalid_encoding, :structure, @current_line, nil, @current_line) unless @reported_invalid_encoding
-      @current_line = @current_line+1
+      @current_line += 1
       @reported_invalid_encoding = true
     end
 
@@ -166,7 +169,7 @@ module Csvlint
       @encoding = input.encoding.to_s
       report_line_breaks(line)
       parse_contents(input, line)
-      @lambda.call(self) unless @lambda.nil?
+      @lambda&.call(self)
     rescue ArgumentError => ae
       build_errors(:invalid_encoding, :structure, @current_line, nil, index) unless @reported_invalid_encoding
       @reported_invalid_encoding = true
@@ -227,8 +230,8 @@ module Csvlint
     def validate_metadata
       assumed_header = !@supplied_dialect
       unless @headers.empty?
-        if @headers["content-type"] =~ /text\/csv/
-          @csv_header = @csv_header && true
+        if /text\/csv/.match?(@headers["content-type"])
+          @csv_header &&= true
           assumed_header = @assumed_header.present?
         end
         if @headers["content-type"] =~ /header=(present|absent)/
@@ -236,19 +239,35 @@ module Csvlint
           @csv_header = false if $1 == "absent"
           assumed_header = false
         end
-        build_warnings(:no_content_type, :context) if @content_type == nil
-        build_errors(:wrong_content_type, :context) unless (@content_type && @content_type =~ /text\/csv/)
+        build_warnings(:no_content_type, :context) if @content_type.nil?
+        build_errors(:wrong_content_type, :context) unless @content_type && @content_type =~ /text\/csv/
       end
       @header_processed = true
       build_info_messages(:assumed_header, :structure) if assumed_header
 
-      @link_headers = @headers["link"].split(",") rescue nil
-      @link_headers.each do |link_header|
+      @link_headers = begin
+                        @headers["link"].split(",")
+                      rescue
+                        nil
+                      end
+      @link_headers&.each do |link_header|
         match = LINK_HEADER_REGEXP.match(link_header)
-        uri = match["uri"].gsub(/(^\<|\>$)/, "") rescue nil
-        rel = match["rel-relationship"].gsub(/(^\"|\"$)/, "") rescue nil
+        uri = begin
+                match["uri"].gsub(/(^<|>$)/, "")
+              rescue
+                nil
+              end
+        rel = begin
+                match["rel-relationship"].gsub(/(^"|"$)/, "")
+              rescue
+                nil
+              end
         param = match["param"]
-        param_value = match["param-value"].gsub(/(^\"|\"$)/, "") rescue nil
+        param_value = begin
+                        match["param-value"].gsub(/(^"|"$)/, "")
+                      rescue
+                        nil
+                      end
         if rel == "describedby" && param == "type" && ["application/csvm+json", "application/ld+json", "application/json"].include?(param_value)
           begin
             url = URI.join(@source_url, uri)
@@ -264,14 +283,14 @@ module Csvlint
           rescue OpenURI::HTTPError
           end
         end
-      end if @link_headers
+      end
     end
 
     def header?
       @csv_header && @dialect["header"]
     end
 
-    def report_line_breaks(line_no=nil)
+    def report_line_breaks(line_no = nil)
       return unless @input[-1, 1].include?("\n") # Return straight away if there's no newline character - i.e. we're on the last line
       line_break = get_line_break(@input)
       @line_breaks << line_break
@@ -297,24 +316,24 @@ module Csvlint
         schema_dialect = {}
       end
       @dialect = {
-          "header" => true,
-          "headerRowCount" => 1,
-          "delimiter" => ",",
-          "skipInitialSpace" => true,
-          "lineTerminator" => :auto,
-          "quoteChar" => '"',
-          "trim" => :true
+        "header" => true,
+        "headerRowCount" => 1,
+        "delimiter" => ",",
+        "skipInitialSpace" => true,
+        "lineTerminator" => :auto,
+        "quoteChar" => '"',
+        "trim" => :true
       }.merge(schema_dialect).merge(@dialect || {})
 
-      @csv_header = @csv_header && @dialect["header"]
+      @csv_header &&= @dialect["header"]
       @csv_options = dialect_to_csv_options(@dialect)
     end
 
     def validate_encoding
       if @headers["content-type"]
-        if @headers["content-type"] !~ /charset=/
+        if !/charset=/.match?(@headers["content-type"])
           build_warnings(:no_encoding, :context)
-        elsif @headers["content-type"] !~ /charset=utf-8/i
+        elsif !/charset=utf-8/i.match?(@headers["content-type"])
           build_warnings(:encoding, :context)
         end
       end
@@ -338,10 +357,10 @@ module Csvlint
     end
 
     def build_exception_messages(csvException, errChars, lineNo)
-      #TODO 1 - this is a change in logic, rather than straight refactor of previous error building, however original logic is bonkers
-      #TODO 2 - using .kind_of? is a very ugly fix here and it meant to work around instances where :auto symbol is preserved in @csv_options
+      # TODO 1 - this is a change in logic, rather than straight refactor of previous error building, however original logic is bonkers
+      # TODO 2 - using .kind_of? is a very ugly fix here and it meant to work around instances where :auto symbol is preserved in @csv_options
       type = fetch_error(csvException)
-      if !@csv_options[:row_sep].kind_of?(Symbol) && [:unclosed_quote,:stray_quote].include?(type) && !@input.match(@csv_options[:row_sep])
+      if !@csv_options[:row_sep].is_a?(Symbol) && [:unclosed_quote, :stray_quote].include?(type) && !@input.match(@csv_options[:row_sep])
         build_linebreak_error
       else
         build_errors(type, :structure, lineNo, nil, errChars)
@@ -354,11 +373,11 @@ module Csvlint
 
     def validate_header(header)
       names = Set.new
-      header.map{|h| h.strip! } if @dialect["trim"] == :true
-      header.each_with_index do |name,i|
-        build_warnings(:empty_column_name, :schema, nil, i+1) if name == ""
+      header.map { |h| h.strip! } if @dialect["trim"] == :true
+      header.each_with_index do |name, i|
+        build_warnings(:empty_column_name, :schema, nil, i + 1) if name == ""
         if names.include?(name)
-          build_warnings(:duplicate_column_name, :schema, nil, i+1)
+          build_warnings(:duplicate_column_name, :schema, nil, i + 1)
         else
           names << name
         end
@@ -368,24 +387,28 @@ module Csvlint
         @errors += @schema.errors
         @warnings += @schema.warnings
       end
-      return valid?
+      valid?
     end
 
     def fetch_error(error)
       e = error.message.match(/^(.+?)(?: [io]n)? \(?line \d+\)?\.?$/i)
-      message = e[1] rescue nil
+      message = begin
+                  e[1]
+                rescue
+                  nil
+                end
       ERROR_MATCHERS.fetch(message, :unknown_error)
     end
 
     def dialect_to_csv_options(dialect)
       skipinitialspace = dialect["skipInitialSpace"] || true
       delimiter = dialect["delimiter"]
-      delimiter = delimiter + " " if !skipinitialspace
-      return {
-          :col_sep => delimiter,
-          :row_sep => dialect["lineTerminator"],
-          :quote_char => dialect["quoteChar"],
-          :skip_blanks => false
+      delimiter += " " unless skipinitialspace
+      {
+        col_sep: delimiter,
+        row_sep: dialect["lineTerminator"],
+        quote_char: dialect["quoteChar"],
+        skip_blanks: false
       }
     end
 
@@ -395,25 +418,25 @@ module Csvlint
         @formats[i] ||= Hash.new(0)
 
         format =
-            if col.strip[FORMATS[:numeric]]
-              :numeric
-            elsif uri?(col)
-              :uri
-            elsif possible_date?(col)
-              date_formats(col)
-            else
-              :string
-            end
+          if col.strip[FORMATS[:numeric]]
+            :numeric
+          elsif uri?(col)
+            :uri
+          elsif possible_date?(col)
+            date_formats(col)
+          else
+            :string
+          end
 
         @formats[i][format] += 1
       end
     end
 
     def check_consistency
-      @formats.each_with_index do |format,i|
+      @formats.each_with_index do |format, i|
         if format
           total = format.values.reduce(:+).to_f
-          if format.none?{|_,count| count / total >= 0.9}
+          if format.none? { |_, count| count / total >= 0.9 }
             build_warnings(:inconsistent_values, :schema, nil, i + 1)
           end
         end
@@ -429,7 +452,6 @@ module Csvlint
     end
 
     def locate_schema
-
       @source_url = nil
       warn_if_unsuccessful = false
       case @source
@@ -448,7 +470,7 @@ module Csvlint
         end
       end
       paths = []
-      if @source_url =~ /^http(s)?/
+      if /^http(s)?/.match?(@source_url)
         begin
           well_known_uri = URI.join(@source_url, "/.well-known/csvm")
           paths = open(well_known_uri).read.split("\n")
@@ -459,9 +481,9 @@ module Csvlint
       paths.each do |template|
         begin
           template = URITemplate.new(template)
-          path = template.expand('url' => @source_url)
+          path = template.expand("url" => @source_url)
           url = URI.join(@source_url, path)
-          url = File.new(url.to_s.sub(/^file:/, "")) if url.to_s =~ /^file:/
+          url = File.new(url.to_s.sub(/^file:/, "")) if /^file:/.match?(url.to_s)
           schema = Schema.load_from_uri(url)
           if schema.instance_of? Csvlint::Csvw::TableGroup
             if schema.tables[@source_url]
@@ -485,23 +507,22 @@ module Csvlint
     private
 
     def parse_extension(source)
-
       case source
         when File
-          return File.extname( source.path )
+          File.extname(source.path)
         when IO
-          return ""
+          ""
         when StringIO
-          return ""
+          ""
         when Tempfile
           # this is triggered when the revalidate dialect use case happens
-          return ""
+          ""
         else
           begin
             parsed = URI.parse(source)
             File.extname(parsed.path)
           rescue URI::InvalidURIError
-            return ""
+            ""
           end
       end
     end
@@ -509,7 +530,7 @@ module Csvlint
     def uri?(value)
       if value.strip[FORMATS[:uri]]
         uri = URI.parse(value)
-        uri.kind_of?(URI::HTTP) || uri.kind_of?(URI::HTTPS)
+        uri.is_a?(URI::HTTP) || uri.is_a?(URI::HTTPS)
       end
     rescue URI::InvalidURIError
       false
@@ -520,25 +541,25 @@ module Csvlint
     end
 
     def date_formats(col)
-      if col[FORMATS[:date_db]] && date_format?(Date, col, '%Y-%m-%d')
+      if col[FORMATS[:date_db]] && date_format?(Date, col, "%Y-%m-%d")
         :date_db
-      elsif col[FORMATS[:date_short]] && date_format?(Date, col, '%e %b')
+      elsif col[FORMATS[:date_short]] && date_format?(Date, col, "%e %b")
         :date_short
-      elsif col[FORMATS[:date_rfc822]] && date_format?(Date, col, '%e %b %Y')
+      elsif col[FORMATS[:date_rfc822]] && date_format?(Date, col, "%e %b %Y")
         :date_rfc822
-      elsif col[FORMATS[:date_long]] && date_format?(Date, col, '%B %e, %Y')
+      elsif col[FORMATS[:date_long]] && date_format?(Date, col, "%B %e, %Y")
         :date_long
-      elsif col[FORMATS[:dateTime_time]] && date_format?(Time, col, '%H:%M')
+      elsif col[FORMATS[:dateTime_time]] && date_format?(Time, col, "%H:%M")
         :dateTime_time
-      elsif col[FORMATS[:dateTime_hms]] && date_format?(Time, col, '%H:%M:%S')
+      elsif col[FORMATS[:dateTime_hms]] && date_format?(Time, col, "%H:%M:%S")
         :dateTime_hms
-      elsif col[FORMATS[:dateTime_db]] && date_format?(Time, col, '%Y-%m-%d %H:%M:%S')
+      elsif col[FORMATS[:dateTime_db]] && date_format?(Time, col, "%Y-%m-%d %H:%M:%S")
         :dateTime_db
-      elsif col[FORMATS[:dateTime_iso8601]] && date_format?(Time, col, '%Y-%m-%dT%H:%M:%SZ')
+      elsif col[FORMATS[:dateTime_iso8601]] && date_format?(Time, col, "%Y-%m-%dT%H:%M:%SZ")
         :dateTime_iso8601
-      elsif col[FORMATS[:dateTime_short]] && date_format?(Time, col, '%d %b %H:%M')
+      elsif col[FORMATS[:dateTime_short]] && date_format?(Time, col, "%d %b %H:%M")
         :dateTime_short
-      elsif col[FORMATS[:dateTime_long]] && date_format?(Time, col, '%B %d, %Y %H:%M')
+      elsif col[FORMATS[:dateTime_long]] && date_format?(Time, col, "%B %d, %Y %H:%M")
         :dateTime_long
       else
         :string
@@ -565,25 +586,25 @@ module Csvlint
     end
 
     FORMATS = {
-        :string => nil,
-        :numeric => /\A[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?\z/,
-        :uri => /\Ahttps?:/,
-        :date_db => /\A\d{4,}-\d\d-\d\d\z/,                                               # "12345-01-01"
-        :date_long => /\A(?:#{Date::MONTHNAMES.join('|')}) [ \d]\d, \d{4,}\z/,            # "January  1, 12345"
-        :date_rfc822 => /\A[ \d]\d (?:#{Date::ABBR_MONTHNAMES.join('|')}) \d{4,}\z/,      # " 1 Jan 12345"
-        :date_short => /\A[ \d]\d (?:#{Date::ABBR_MONTHNAMES.join('|')})\z/,              # "1 Jan"
-        :dateTime_db => /\A\d{4,}-\d\d-\d\d \d\d:\d\d:\d\d\z/,                            # "12345-01-01 00:00:00"
-        :dateTime_hms => /\A\d\d:\d\d:\d\d\z/,                                            # "00:00:00"
-        :dateTime_iso8601 => /\A\d{4,}-\d\d-\d\dT\d\d:\d\d:\d\dZ\z/,                      # "12345-01-01T00:00:00Z"
-        :dateTime_long => /\A(?:#{Date::MONTHNAMES.join('|')}) \d\d, \d{4,} \d\d:\d\d\z/, # "January 01, 12345 00:00"
-        :dateTime_short => /\A\d\d (?:#{Date::ABBR_MONTHNAMES.join('|')}) \d\d:\d\d\z/,   # "01 Jan 00:00"
-        :dateTime_time => /\A\d\d:\d\d\z/,                                                # "00:00"
+      string: nil,
+      numeric: /\A[-+]?\d*\.?\d+(?:[eE][-+]?\d+)?\z/,
+      uri: /\Ahttps?:/,
+      date_db: /\A\d{4,}-\d\d-\d\d\z/, # "12345-01-01"
+      date_long: /\A(?:#{Date::MONTHNAMES.join('|')}) [ \d]\d, \d{4,}\z/, # "January  1, 12345"
+      date_rfc822: /\A[ \d]\d (?:#{Date::ABBR_MONTHNAMES.join('|')}) \d{4,}\z/, # " 1 Jan 12345"
+      date_short: /\A[ \d]\d (?:#{Date::ABBR_MONTHNAMES.join('|')})\z/, # "1 Jan"
+      dateTime_db: /\A\d{4,}-\d\d-\d\d \d\d:\d\d:\d\d\z/, # "12345-01-01 00:00:00"
+      dateTime_hms: /\A\d\d:\d\d:\d\d\z/, # "00:00:00"
+      dateTime_iso8601: /\A\d{4,}-\d\d-\d\dT\d\d:\d\d:\d\dZ\z/, # "12345-01-01T00:00:00Z"
+      dateTime_long: /\A(?:#{Date::MONTHNAMES.join('|')}) \d\d, \d{4,} \d\d:\d\d\z/, # "January 01, 12345 00:00"
+      dateTime_short: /\A\d\d (?:#{Date::ABBR_MONTHNAMES.join('|')}) \d\d:\d\d\z/, # "01 Jan 00:00"
+      dateTime_time: /\A\d\d:\d\d\z/ # "00:00"
     }.freeze
 
     URI_REGEXP = /(?<uri>.*?)/
-    TOKEN_REGEXP = /([^\(\)\<\>@,;:\\"\/\[\]\?=\{\} \t]+)/
+    TOKEN_REGEXP = /([^()<>@,;:\\"\/\[\]?={} \t]+)/
     QUOTED_STRING_REGEXP = /("[^"]*")/
-    SGML_NAME_REGEXP = /([A-Za-z][-A-Za-z0-9\.]*)/
+    SGML_NAME_REGEXP = /([A-Za-z][-A-Za-z0-9.]*)/
     RELATIONSHIP_REGEXP = Regexp.new("(?<relationship>#{SGML_NAME_REGEXP}|(\"#{SGML_NAME_REGEXP}(\\s+#{SGML_NAME_REGEXP})*\"))")
     REL_REGEXP = Regexp.new("(?<rel>\\s*rel\\s*=\\s*(?<rel-relationship>#{RELATIONSHIP_REGEXP}))")
     REV_REGEXP = Regexp.new("(?<rev>\\s*rev\\s*=\\s*#{RELATIONSHIP_REGEXP})")
@@ -592,7 +613,6 @@ module Csvlint
     LINK_EXTENSION_REGEXP = Regexp.new("(?<link-extension>(?<param>#{TOKEN_REGEXP})(\\s*=\\s*(?<param-value>#{TOKEN_REGEXP}|#{QUOTED_STRING_REGEXP}))?)")
     LINK_PARAM_REGEXP = Regexp.new("(#{REL_REGEXP}|#{REV_REGEXP}|#{TITLE_REGEXP}|#{ANCHOR_REGEXP}|#{LINK_EXTENSION_REGEXP})")
     LINK_HEADER_REGEXP = Regexp.new("\<#{URI_REGEXP}\>(\\s*;\\s*#{LINK_PARAM_REGEXP})*")
-    POSSIBLE_DATE_REGEXP = Regexp.new("\\A(\\d|\\s\\d#{Date::ABBR_MONTHNAMES.join('|')}#{Date::MONTHNAMES.join('|')})")
-
+    POSSIBLE_DATE_REGEXP = Regexp.new("\\A(\\d|\\s\\d#{Date::ABBR_MONTHNAMES.join("|")}#{Date::MONTHNAMES.join("|")})")
   end
 end

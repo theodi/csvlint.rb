@@ -1,24 +1,23 @@
-# coding: utf-8
-lib = File.expand_path('../lib', __FILE__)
+lib = File.expand_path("../lib", __FILE__)
 $LOAD_PATH.unshift(lib) unless $LOAD_PATH.include?(lib)
-require 'csvlint/version'
+require "csvlint/version"
 
 Gem::Specification.new do |spec|
-  spec.name          = "csvlint"
-  spec.version       = Csvlint::VERSION
-  spec.authors       = ["pezholio"]
-  spec.email         = ["pezholio@gmail.com"]
-  spec.description   = %q{CSV Validator}
-  spec.summary       = %q{CSV Validator}
-  spec.homepage      = "https://github.com/theodi/csvlint.rb"
-  spec.license       = "MIT"
+  spec.name = "csvlint"
+  spec.version = Csvlint::VERSION
+  spec.authors = ["pezholio"]
+  spec.email = ["pezholio@gmail.com"]
+  spec.description = "CSV Validator"
+  spec.summary = "CSV Validator"
+  spec.homepage = "https://github.com/theodi/csvlint.rb"
+  spec.license = "MIT"
 
-  spec.files         = `git ls-files`.split($/)
-  spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
-  spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})
+  spec.files = `git ls-files`.split($/)
+  spec.executables = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
+  spec.test_files = spec.files.grep(%r{^(test|spec|features)/})
   spec.require_paths = ["lib"]
 
-  spec.required_ruby_version = ['~> 2.4', '< 2.8']
+  spec.required_ruby_version = ["~> 2.4", "< 2.8"]
 
   spec.add_dependency "rainbow"
   spec.add_dependency "open_uri_redirections"
@@ -48,5 +47,5 @@ Gem::Specification.new do |spec|
   spec.add_development_dependency "rdf", "< 4.0"
   spec.add_development_dependency "rdf-turtle"
   spec.add_development_dependency "henry"
-
+  spec.add_development_dependency "standard"
 end

@@ -1,22 +1,22 @@
-require 'coveralls'
-Coveralls.wear_merged!('test_frameworks')
+require "coveralls"
+Coveralls.wear_merged!("test_frameworks")
 
-$:.unshift File.join( File.dirname(__FILE__), "..", "..", "lib")
+$:.unshift File.join(File.dirname(__FILE__), "..", "..", "lib")
 
-require 'rspec/expectations'
-require 'cucumber/rspec/doubles'
-require 'csvlint'
-require 'pry'
+require "rspec/expectations"
+require "cucumber/rspec/doubles"
+require "csvlint"
+require "pry"
 
-require 'spork'
+require "spork"
 
 Spork.each_run do
-  require 'csvlint'
+  require "csvlint"
 end
 
 class CustomWorld
   def default_csv_options
-    return {
+    {
     }
   end
 end

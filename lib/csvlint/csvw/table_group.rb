@@ -1,7 +1,6 @@
 module Csvlint
   module Csvw
     class TableGroup
-
       include Csvlint::ErrorCollector
 
       attr_reader :url, :id, :tables, :notes, :annotations
@@ -13,11 +12,11 @@ module Csvlint
         @notes = notes
         @annotations = annotations
         @validated_tables = {}
-        @tables.each { |t,v| @validated_tables[t] = false }
+        @tables.each { |t, v| @validated_tables[t] = false }
         reset
         @warnings += warnings
-        @errors += @tables.map{|url,table| table.errors}.flatten
-        @warnings += @tables.map{|url,table| table.warnings}.flatten
+        @errors += @tables.map { |url, table| table.errors }.flatten
+        @warnings += @tables.map { |url, table| table.warnings }.flatten
       end
 
       def validate_header(header, table_url, strict)
@@ -27,10 +26,10 @@ module Csvlint
         table.validate_header(header, strict)
         @errors += table.errors
         @warnings += table.warnings
-        return valid?
+        valid?
       end
 
-      def validate_row(values, row=nil, all_errors=[], table_url, validate)
+      def validate_row(values, row = nil, all_errors = [], table_url, validate)
         reset
         table_url = "file:#{File.absolute_path(table_url)}" if table_url.instance_of? File
         @validated_tables[table_url] = true
@@ -38,19 +37,19 @@ module Csvlint
         table.validate_row(values, row, validate)
         @errors += table.errors
         @warnings += table.warnings
-        return valid?
+        valid?
       end
 
       def validate_foreign_keys
         reset
         unless @validated_tables.has_value?(false)
-          @tables.each do |table_url,table|
+          @tables.each do |table_url, table|
             table.validate_foreign_keys
             @errors += table.errors
             @warnings += table.warnings
           end
         end
-        return valid?
+        valid?
       end
 
       def self.from_json(url, json)
@@ -64,7 +63,7 @@ module Csvlint
 
         context = json["@context"]
         if context.instance_of?(Array) && context[1]
-          context[1].each do |property,value|
+          context[1].each do |property, value|
             v, warning, type = Csvw::PropertyChecker.check_property(property, value, base_url, lang)
             if warning.nil? || warning.empty?
               if type == :context
@@ -75,20 +74,22 @@ module Csvlint
               end
             else
               raise Csvlint::Csvw::MetadataError.new("$.@context"), "@context contains properties other than @base or @language (#{property})" unless ["@base", "@language"].include?(property)
-              warnings += Array(warning).map{ |w| Csvlint::ErrorMessage.new(w, :metadata, nil, nil, "@context: #{property}: #{value}", nil) }
+              warnings += Array(warning).map { |w| Csvlint::ErrorMessage.new(w, :metadata, nil, nil, "@context: #{property}: #{value}", nil) }
             end
           end
         end
         json.delete("@context")
 
-        if json["url"]
-          json = { "tables" => [ json ] }
-        end unless json["tables"]
+        unless json["tables"]
+          if json["url"]
+            json = {"tables" => [json]}
+          end
+        end
 
-        json.each do |property,value|
+        json.each do |property, value|
           unless VALID_PROPERTIES.include? property
             v, warning, type = Csvw::PropertyChecker.check_property(property, value, base_url, lang)
-            warnings += Array(warning).map{ |w| Csvlint::ErrorMessage.new(w, :metadata, nil, nil, "#{property}: #{value}", nil) } unless warning.nil? || warning.empty?
+            warnings += Array(warning).map { |w| Csvlint::ErrorMessage.new(w, :metadata, nil, nil, "#{property}: #{value}", nil) } unless warning.nil? || warning.empty?
             if type == :annotation
               annotations[property] = v
             elsif type == :common
@@ -96,14 +97,14 @@ module Csvlint
             elsif type == :inherited
               inherited_properties[property] = v
             else
-              warnings << Csvlint::ErrorMessage.new(:invalid_property, :metadata, nil, nil, "#{property}", nil)
+              warnings << Csvlint::ErrorMessage.new(:invalid_property, :metadata, nil, nil, property.to_s, nil)
             end
           end
         end
 
         id = common_properties["@id"]
 
-        raise Csvlint::Csvw::MetadataError.new("$.@type"), "@type of table group is not 'TableGroup'" if json["@type"] && json["@type"] != 'TableGroup'
+        raise Csvlint::Csvw::MetadataError.new("$.@type"), "@type of table group is not 'TableGroup'" if json["@type"] && json["@type"] != "TableGroup"
 
         raise Csvlint::Csvw::MetadataError.new("$"), "no tables property" unless json["tables"]
         raise Csvlint::Csvw::MetadataError.new("$.tables"), "empty tables property" if json["tables"].empty?
@@ -121,12 +122,12 @@ module Csvlint
             table = Csvlint::Csvw::Table.from_json(table_desc, base_url, lang, common_properties, inherited_properties)
             tables[table_url] = table
           else
-            warnings << Csvlint::ErrorMessage.new(:invalid_table_description, :metadata, nil, nil, "#{table_desc}", nil)
+            warnings << Csvlint::ErrorMessage.new(:invalid_table_description, :metadata, nil, nil, table_desc.to_s, nil)
           end
         end
 
         tables.each do |table_url, table|
-          table.foreign_keys.each_with_index do |foreign_key,i|
+          table.foreign_keys.each_with_index do |foreign_key, i|
             reference = foreign_key["reference"]
             if reference["resource"]
               resource = URI.join(base_url, reference["resource"]).to_s
@@ -134,7 +135,7 @@ module Csvlint
               raise Csvlint::Csvw::MetadataError.new("$.tables[?(@.url = '#{table_url}')].tableSchema.foreign_keys[#{i}].reference.resource"), "foreign key references table that does not exist (#{resource})" if referenced_table.nil?
             else
               schema_url = URI.join(base_url, reference["schemaReference"]).to_s
-              referenced_tables = tables.values.select{ |table| table.schema == schema_url }
+              referenced_tables = tables.values.select { |table| table.schema == schema_url }
               referenced_table = referenced_tables[0]
               raise Csvlint::Csvw::MetadataError.new("$.tables[?(@.url = '#{table_url}')].tableSchema.foreign_keys[#{i}].reference.schemaReference"), "foreign key references schema that is not used (#{schema_url})" if referenced_table.nil?
             end
@@ -154,12 +155,12 @@ module Csvlint
           end
         end
 
-        return self.new(base_url, id: id, tables: tables, notes: common_properties["notes"] || [], annotations: annotations, warnings: warnings)
+        new(base_url, id: id, tables: tables, notes: common_properties["notes"] || [], annotations: annotations, warnings: warnings)
       end
 
       private
-        VALID_PROPERTIES = ['tables', 'notes', '@type']
 
+      VALID_PROPERTIES = ["tables", "notes", "@type"]
     end
   end
 end

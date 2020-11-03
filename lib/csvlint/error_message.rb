@@ -9,7 +9,6 @@ module Csvlint
       @column = column
       @content = content
       @constraints = constraints
-
     end
   end
 end

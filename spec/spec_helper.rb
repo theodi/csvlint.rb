@@ -1,9 +1,9 @@
-require 'coveralls'
-Coveralls.wear_merged!('test_frameworks')
+require "coveralls"
+Coveralls.wear_merged!("test_frameworks")
 
-require 'csvlint'
-require 'pry'
-require 'webmock/rspec'
+require "csvlint"
+require "pry"
+require "webmock/rspec"
 
 RSpec.configure do |config|
   config.run_all_when_everything_filtered = true
@@ -13,5 +13,5 @@ RSpec.configure do |config|
   # order dependency and want to debug it, you can fix the order by providing
   # the seed, which is printed after each run.
   #     --seed 1234
-  config.order = 'random'
+  config.order = "random"
 end

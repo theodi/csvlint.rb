@@ -3,5 +3,5 @@ Given(/^it is parsed as a StringIO$/) do
 end
 
 Given(/^I parse a file called "(.*?)"$/) do |filename|
-  @url = File.new( File.join( File.dirname(__FILE__), "..", "fixtures", filename ) )
+  @url = File.new(File.join(File.dirname(__FILE__), "..", "fixtures", filename))
 end
