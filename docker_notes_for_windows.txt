@@ -1,0 +1,20 @@
+# Note that these commands are specific for a docker environment on MS Windows.
+
+# to generate Gemfile.lock file
+docker run --rm -v %CD%:/usr/src/app -w /usr/src/app ruby:2.5 bundle install
+
+# to build docker image from source (the ending dot is significant)
+docker build -t csvlint .
+
+# to run tests
+docker run -it --rm csvlint rake
+
+# to run csvlint command line with a CSV file.
+# cd to the directory with the CSV file then
+docker run -it --rm -v %CD%:/tmp csvlint ./bin/csvlint --dump-errors /tmp/file-to-lint.csv
+
+# to enter the linux container
+docker run -it --rm -v %CD%:/tmp csvlint bash
+
+# to enter the ruby REPL
+docker run -it --rm -v %CD%:/tmp csvlint irb
