@@ -23,6 +23,7 @@ module Csvlint
       def validate_header(header, table_url, strict)
         reset
         table_url = "file:#{File.absolute_path(table_url)}" if table_url.instance_of? File
+        @validated_tables[table_url] = true
         table = tables[table_url]
         table.validate_header(header, strict)
         @errors += table.errors

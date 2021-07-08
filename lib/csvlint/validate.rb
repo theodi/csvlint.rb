@@ -106,6 +106,9 @@ module Csvlint
     end
 
     def validate_stream
+      if (@source.nil?)
+        return
+      end
       @current_line = 1
       @source.each_line do |line|
         break if line_limit_reached?

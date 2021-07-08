@@ -140,12 +140,13 @@ module Csvlint
 
       private
         FIELDS = {
-          "yyyy" => /(?<year>-?([1-9][0-9]{3,}|0[0-9]{3}))/,
+          "yyyy" => /(?<year>-?([1-9][0-9]{3}|0[0-9]{3}))/,
           "MM" => /(?<month>0[1-9]|1[0-2])/,
           "M" => /(?<month>[1-9]|1[0-2])/,
           "dd" => /(?<day>0[1-9]|[12][0-9]|3[01])/,
-          "d" => /(?<day>[1-9]|[12][0-9]|3[01])/,
+          "d" => /(?<day>0?[1-9]|[12]?[0-9]|3[01])/,
           "HH" => /(?<hour>[01][0-9]|2[0-3])/,
+          "H" => /(?<hour>0?[0-9]|1[0-9]|2[0-3])/,
           "mm" => /(?<minute>[0-5][0-9])/,
           "ss" => /([0-6][0-9])/,
           "X" => /(?<timezone>Z|[-+]((0[0-9]|1[0-3])([0-5][0-9])?|14(00)?))/,
@@ -170,13 +171,15 @@ module Csvlint
           "dd.MM.yyyy" => Regexp.new("^#{FIELDS["dd"]}.#{FIELDS["MM"]}.#{FIELDS["yyyy"]}$"),
           "d.M.yyyy" => Regexp.new("^#{FIELDS["d"]}.#{FIELDS["M"]}.#{FIELDS["yyyy"]}$"),
           "MM.dd.yyyy" => Regexp.new("^#{FIELDS["MM"]}.#{FIELDS["dd"]}.#{FIELDS["yyyy"]}$"),
-          "M.d.yyyy" => Regexp.new("^#{FIELDS["M"]}.#{FIELDS["d"]}.#{FIELDS["yyyy"]}$")
+          "M.d.yyyy" => Regexp.new("^#{FIELDS["M"]}.#{FIELDS["d"]}.#{FIELDS["yyyy"]}$"),
+          "dMMyyyy" => Regexp.new("^#{FIELDS["d"]}#{FIELDS["MM"]}#{FIELDS["yyyy"]}$"),
         }
 
         TIME_PATTERN_REGEXP = {
           "HH:mm:ss" => Regexp.new("^#{FIELDS["HH"]}:#{FIELDS["mm"]}:(?<second>#{FIELDS["ss"]})$"),
           "HHmmss" => Regexp.new("^#{FIELDS["HH"]}#{FIELDS["mm"]}(?<second>#{FIELDS["ss"]})$"),
           "HH:mm" => Regexp.new("^#{FIELDS["HH"]}:#{FIELDS["mm"]}$"),
+          "H:mm" => Regexp.new("^#{FIELDS["H"]}:#{FIELDS["mm"]}$"),
           "HHmm" => Regexp.new("^#{FIELDS["HH"]}#{FIELDS["mm"]}$")
         }
 

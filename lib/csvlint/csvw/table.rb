@@ -63,26 +63,39 @@ module Csvlint
           unless @primary_key.nil?
             key = @primary_key.map { |column| column.validate(values[column.number - 1], row) }
             colnum = if primary_key.length == 1 then primary_key[0].number else nil end
-            build_errors(:duplicate_key, :schema, row, colnum, key.join(","), @primary_key_values[key]) if @primary_key_values.include?(key)
+            build_errors(:duplicate_key, :schema, row, colnum, key, @primary_key_values[key]) if @primary_key_values.include?(key)
             @primary_key_values[key] = row
           end
           # build a record of the unique values that are referenced by foreign keys from other tables
           # so that later we can check whether those foreign keys reference these values
           @foreign_key_references.each do |foreign_key|
             referenced_columns = foreign_key["referenced_columns"]
-            key = referenced_columns.map{ |column| column.validate(values[column.number - 1], row) }
-            known_values = @foreign_key_reference_values[foreign_key] = @foreign_key_reference_values[foreign_key] || {}
-            known_values[key] = known_values[key] || []
-            known_values[key] << row
+            key = referenced_columns.map{ |column| values[column.number - 1] }
+            known_values = @foreign_key_reference_values[foreign_key] ||= {}
+            (known_values[key] ||= []) << row
           end
           # build a record of the references from this row to other tables
           # we can't check yet whether these exist in the other tables because
           # we might not have parsed those other tables
           @foreign_keys.each do |foreign_key|
             referencing_columns = foreign_key["referencing_columns"]
-            key = referencing_columns.map{ |column| column.validate(values[column.number - 1], row) }
-            known_values = @foreign_key_values[foreign_key] = @foreign_key_values[foreign_key] || []
-            known_values << key unless known_values.include?(key)
+            key = referencing_columns.map{ |column| values[column.number - 1] }
+            known_values = @foreign_key_values[foreign_key] ||= {}
+
+            if referencing_columns.length == 1 && !referencing_columns[0].separator.nil?
+              # This case is for an array-valued column, where each value is a
+              # FK. The data will look like this:
+              #     [ [ "5", "7", "9" ] ]
+              # We want it like this:
+              #     [ ["5"], ["7"], ["9"] ]
+              if key[0] != nil
+                key[0].each do |subkey|
+                  (known_values[ [subkey] ] ||= []) << row
+                end
+              end
+            else
+              (known_values[key] ||= []) << row
+            end
           end
         end
         return valid?
@@ -92,6 +105,7 @@ module Csvlint
         reset
         @foreign_keys.each do |foreign_key|
           local = @foreign_key_values[foreign_key]
+          next if local.nil?
           remote_table = foreign_key["referenced_table"]
           remote_table.validate_foreign_key_references(foreign_key, @url, local)
           @errors += remote_table.errors unless remote_table == self
@@ -102,14 +116,22 @@ module Csvlint
 
       def validate_foreign_key_references(foreign_key, remote_url, remote)
         reset
-        local = @foreign_key_reference_values[foreign_key]
-        context = { "from" => { "url" => remote_url.to_s.split("/")[-1], "columns" => foreign_key["columnReference"] }, "to" => { "url" => @url.to_s.split("/")[-1], "columns" => foreign_key["reference"]["columnReference"] }}
+        local = @foreign_key_reference_values[foreign_key] || {}
+        context = {
+          "from" => { "url" => remote_url.to_s.split("/")[-1], "columns" => foreign_key["columnReference"] },
+          "to" => { "url" => @url.to_s.split("/")[-1], "columns" => foreign_key["reference"]["columnReference"] }
+        }
         colnum = if foreign_key["referencing_columns"].length == 1 then foreign_key["referencing_columns"][0].number else nil end
-        remote.each_with_index do |r,i|
-          if local[r]
-            build_errors(:multiple_matched_rows, :schema, i+1, colnum, r, context) if local[r].length > 1
-          else
-            build_errors(:unmatched_foreign_key_reference, :schema, i+1, colnum, r, context)
+
+        remote.each do |key,rows|
+          if not local[key]
+            rows.each do |row|
+              build_errors(:unmatched_foreign_key_reference, :schema, row, colnum, key, context)
+            end
+          elsif local[key].length > 1
+            rows.each do |row|
+              build_errors(:multiple_matched_rows, :schema, row, colnum, key, context)
+            end
           end
         end
         return valid?

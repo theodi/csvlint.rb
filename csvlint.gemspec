@@ -13,6 +13,11 @@ Gem::Specification.new do |spec|
   spec.homepage      = "https://github.com/theodi/csvlint.rb"
   spec.license       = "MIT"
 
+  spec.metadata = {
+    "git-hash" => `git show -s --pretty=format:'%H'`.strip(),
+    "git-desc" => `git describe --dirty --tags`.strip()
+  }
+
   spec.files         = `git ls-files`.split($/)
   spec.executables   = spec.files.grep(%r{^bin/}) { |f| File.basename(f) }
   spec.test_files    = spec.files.grep(%r{^(test|spec|features)/})

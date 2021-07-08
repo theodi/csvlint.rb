@@ -1,0 +1,7 @@
+version: "3"
+services:
+  csvlint.rb:
+    build: .
+    command: rake
+    volumes:
+      - $PWD:/code

@@ -13,7 +13,7 @@ A ruby gem to support validating CSV files to check their syntax and contents. Y
 * Validation that checks the structural formatting of a CSV file  
 * Validation of a delimiter-separated values (dsv) file accesible via URL, File, or an IO-style object (e.g. StringIO)
 * Validation against [CSV dialects](http://dataprotocols.org/csv-dialect/)  
-* Validation against multiple schema standards; [JSON Table Schema](https://github.com/theodi/csvlint.rb/blob/master/README.md#json-table-schema-support) and [CSV on the Web](https://github.com/theodi/csvlint.rb/blob/master/README.md#csv-on-the-web-validation-support) 
+* Validation against multiple schema standards; [JSON Table Schema](https://github.com/theodi/csvlint.rb/blob/master/README.md#json-table-schema-support) and [CSV on the Web](https://github.com/theodi/csvlint.rb/blob/master/README.md#csv-on-the-web-validation-support)
 
 ## Development
 
@@ -200,60 +200,63 @@ follows JSON Table Schema with some extensions and rudinmentary [CSV on the Web 
 
 An example JSON Table Schema schema file is:
 
-	{
-		"fields": [
+```json
+{
+	"fields": [
+		{
+			"name": "id",
+			"constraints": {
+				"required": true,
+				"type": "http://www.w3.org/TR/xmlschema-2/#integer"
+			}
+		},
+		{
+			"name": "price",
+			"constraints": {
+				"required": true,
+				"minLength": 1
+			}
+		},
+		{
+			"name": "postcode",
+			"constraints": {
+				"required": true,
+				"pattern": "[A-Z]{1,2}[0-9][0-9A-Z]? ?[0-9][A-Z]{2}"
+			}
+		}
+	]
+}
+```
+
+An equivalent CSV on the Web Metadata file is:
+```json
+{
+	"@context": "http://www.w3.org/ns/csvw",
+	"url": "http://example.com/example1.csv",
+	"tableSchema": {
+		"columns": [
 			{
 				"name": "id",
-				"constraints": {
-					"required": true,
-					"type": "http://www.w3.org/TR/xmlschema-2/#integer"
-				}
+				"required": true,
+				"datatype": { "base": "integer" }
 			},
 			{
 				"name": "price",
-				"constraints": {
-					"required": true,
-					"minLength": 1 
-				}
+				"required": true,
+				"datatype": { "base": "string", "minLength": 1 }
 			},
 			{
 				"name": "postcode",
-				"constraints": {
-					"required": true,
-					"pattern": "[A-Z]{1,2}[0-9][0-9A-Z]? ?[0-9][A-Z]{2}"
-				}
+				"required": true
 			}
 		]
 	}
-
-An equivalent CSV on the Web Metadata file is:
-
-	{
-		"@context": "http://www.w3.org/ns/csvw",
-		"url": "http://example.com/example1.csv",
-		"tableSchema": {
-			"columns": [
-				{
-					"name": "id",
-					"required": true,
-					"datatype": { "base": "integer" }
-				},
-				{
-					"name": "price",
-					"required": true,
-					"datatype": { "base": "string", "minLength": 1 }
-				},
-				{
-					"name": "postcode",
-					"required": true
-				}
-			]
-		}
-	}
+}
+```
 
 Parsing and validating with a schema (of either kind):
 
-	schema = Csvlint::Schema.load_from_json(uri)
+	schema = Csvlint::Schema.load_from_uri(uri)
 	validator = Csvlint::Validator.new( "http://example.org/data.csv", nil, schema )
 
 ### CSV on the Web Validation Support

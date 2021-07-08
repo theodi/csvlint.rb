@@ -95,7 +95,7 @@ module Csvlint
         string_value = string_value || @default
         if null.include? string_value
           validate_required(nil, row)
-          values = nil
+          values = @separator.nil? ? nil : []
           return values
         else
           string_values = @separator.nil? ? [string_value] : string_value.split(@separator)
