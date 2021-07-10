@@ -79,7 +79,7 @@ module Csvlint
         reset
         if strict || @titles
           valid_headers = @titles ? @titles.map{ |l,v| v if Column.languages_match(l, lang) }.flatten : []
-          unless valid_headers.include? header
+          unless valid_headers.empty? or valid_headers.include? header
             if strict
               build_errors(:invalid_header, :schema, 1, @number, header, @titles) 
             else
